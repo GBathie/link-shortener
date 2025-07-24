@@ -29,10 +29,10 @@ impl<R: LinkRepository, G: IdGenerator> LinkShortenerService for LinkShortener<R
         Ok(self.database.get(&id).await?)
     }
 
-    async fn create(&mut self, long: LongUrl) -> Result<ShortLinkId, Self::Error> {
-        let mut short_id = self.generator.generate();
+    async fn create(&self, long: LongUrl) -> Result<ShortLinkId, Self::Error> {
+        let mut short_id = self.generator.generate().await;
         while let Some(_) = self.database.get(&short_id).await? {
-            short_id = self.generator.generate();
+            short_id = self.generator.generate().await;
         }
         self.database.insert(short_id.clone(), long).await?;
 

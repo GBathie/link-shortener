@@ -1,16 +1,22 @@
+use std::sync::Arc;
+
 use crate::core::{models::id::ShortLinkId, ports::gen_id::IdGenerator};
 use rand::Rng;
 use rand::seq::IndexedRandom;
+use tokio::sync::Mutex;
 
 #[derive(Debug, Clone)]
 pub struct RandomGenerator<R: Rng + Clone + Sync + Send + 'static> {
-    rng: R,
+    rng: Arc<Mutex<R>>,
     len: usize,
 }
 
 impl<R: Rng + Clone + Sync + Send + 'static> RandomGenerator<R> {
     pub fn new_with(rng: R, len: usize) -> Self {
-        Self { rng, len }
+        Self {
+            rng: Arc::new(Mutex::new(rng)),
+            len,
+        }
     }
 }
 
@@ -23,8 +29,26 @@ const LETTERS: [char; 62] = [
 ];
 
 impl<R: Rng + Clone + Sync + Send + 'static> IdGenerator for RandomGenerator<R> {
-    fn generate(&mut self) -> ShortLinkId {
-        let id = LETTERS.choose_multiple(&mut self.rng, self.len).collect();
+    async fn generate(&self) -> ShortLinkId {
+        let id = LETTERS
+            .choose_multiple(&mut self.rng.lock().await, self.len)
+            .collect();
         ShortLinkId::new(id)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use rand::SeedableRng;
+    use rand_chacha::ChaChaRng;
+
+    use crate::{adapters::generator::RandomGenerator, core::ports::gen_id::IdGenerator};
+
+    #[tokio::test]
+    async fn generate_twice_different() {
+        let generator = RandomGenerator::new_with(ChaChaRng::from_os_rng(), 10);
+        let id1 = generator.generate().await;
+        let id2 = generator.generate().await;
+        assert_ne!(id1, id2);
     }
 }

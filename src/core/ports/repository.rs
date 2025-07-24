@@ -7,6 +7,7 @@ pub trait LinkRepository: Sync + Send + Clone + 'static {
         &self,
         id: &ShortLinkId,
     ) -> impl Future<Output = Result<Option<LongUrl>, Self::Error>> + Send;
+
     fn insert(
         &self,
         id: ShortLinkId,

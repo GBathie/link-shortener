@@ -25,5 +25,29 @@ impl LinkRepository for InMemoryRepository {
     }
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq, Eq)]
 pub enum InMemoryRepoError {}
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        adapters::in_memory::InMemoryRepository,
+        core::{
+            models::{id::ShortLinkId, url::LongUrl},
+            ports::repository::LinkRepository,
+        },
+    };
+
+    #[tokio::test]
+    async fn insert_and_get() {
+        let repo = InMemoryRepository::default();
+        let id = ShortLinkId::new("test_id".into());
+        let url = LongUrl::new("http://example.com".into());
+
+        let res = repo.insert(id.clone(), url.clone()).await;
+        assert_eq!(res, Ok(None));
+
+        let get_res = repo.get(&id).await;
+        assert_eq!(get_res, Ok(Some(url)));
+    }
+}
